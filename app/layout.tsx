@@ -12,9 +12,17 @@ const jetbrainsMono = JetBrains_Mono({
 	subsets: ["latin"],
 });
 
+import {images} from "./assets";
+
 export const metadata: Metadata = {
 	title: "Lure Downloader",
 	description: "Premium file downloader",
+	icons: {
+		icon: [
+			{ url: images.iconBlack.src, media: '(prefers-color-scheme: light)' },
+			{ url: images.iconWhite.src, media: '(prefers-color-scheme: dark)' },
+		],
+	},
 };
 
 import {GlobalNotificationProvider} from "./context/GlobalNotificationContext";
