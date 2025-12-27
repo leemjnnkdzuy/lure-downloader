@@ -16,6 +16,7 @@ import {useGlobalNotificationPopup} from "@/app/hooks/useGlobalNotificationPopup
 import {useTheme} from "@/app/hooks/useTheme";
 import {useAuth} from "@/app/hooks/useAuth";
 import getCroppedImg, {flipImage} from "@/app/utils/canvasUtils";
+import { userService } from "@/app/services/UserService";
 
 type Tab = "info" | "password";
 type AvatarPhase = "upload" | "crop";
@@ -29,18 +30,15 @@ export default function ProfilePage() {
 	const [activeTab, setActiveTab] = useState<Tab>("info");
 	const [isLoading, setIsLoading] = useState(false);
 
-	// Password change state
 	const [currentPassword, setCurrentPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
 
-	// Avatar change state
 	const [isAvatarOverlayOpen, setIsAvatarOverlayOpen] = useState(false);
 	const [avatarPhase, setAvatarPhase] = useState<AvatarPhase>("upload");
 	const [selectedImage, setSelectedImage] = useState<string | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	
-	// Crop state
 	const [crop, setCrop] = useState<Point>({x: 0, y: 0});
 	const [zoom, setZoom] = useState(1);
 	const [rotation, setRotation] = useState(0);
@@ -67,14 +65,19 @@ export default function ProfilePage() {
 		setIsLoading(true);
 
 		try {
-			// TODO: Implement password change API
-			await new Promise((resolve) => setTimeout(resolve, 1000));
+			const {data, ok} = await userService.changePassword({
+				currentPassword,
+				newPassword,
+			});
+
+			if (!ok) throw new Error(data.message);
+
 			notify.success("Đổi mật khẩu thành công!", "Thành công");
 			setCurrentPassword("");
 			setNewPassword("");
 			setConfirmPassword("");
-		} catch {
-			notify.error("Có lỗi xảy ra. Vui lòng thử lại.", "Lỗi");
+		} catch (e: any) {
+			notify.error(e.message || "Có lỗi xảy ra. Vui lòng thử lại.", "Lỗi");
 		} finally {
 			setIsLoading(false);
 		}
@@ -151,17 +154,9 @@ export default function ProfilePage() {
 			);
 			if (!croppedImage) throw new Error("Could not crop image");
 
-			const response = await fetch("/api/user/update-avatar", {
-				method: "PUT",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({image: croppedImage}),
-			});
+			const {data, ok} = await userService.updateAvatar(croppedImage);
 
-			const data = await response.json();
-
-			if (!response.ok) {
+			if (!ok) {
 				throw new Error(data.message || "Không thể cập nhật avatar");
 			}
 			

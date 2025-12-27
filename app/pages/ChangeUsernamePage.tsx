@@ -11,6 +11,7 @@ import {TextInput} from "@/app/components/ui/TextInput";
 import {useTheme} from "@/app/hooks/useTheme";
 import {useAuth} from "@/app/hooks/useAuth";
 import {useGlobalNotificationPopup} from "@/app/hooks/useGlobalNotificationPopup";
+import { userService } from "@/app/services/UserService";
 
 export default function ChangeUsernamePage() {
 	const {theme, toggleTheme} = useTheme();
@@ -45,12 +46,7 @@ export default function ChangeUsernamePage() {
 
 		setStatus("checking");
 		try {
-			const response = await fetch("/api/user/check-username", {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify({username: newUsername}),
-			});
-			const data = await response.json();
+			const data = await userService.checkUsername(newUsername);
 
 			if (data.available) {
 				setStatus("available");
@@ -70,14 +66,9 @@ export default function ChangeUsernamePage() {
 
 		setStatus("updating");
 		try {
-			const response = await fetch("/api/user/update-username", {
-				method: "PUT",
-				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify({username: newUsername}),
-			});
-			const data = await response.json();
+			const {data, ok} = await userService.updateUsername(newUsername);
 
-			if (response.ok) {
+			if (ok) {
 				await refreshUser();
 				notify.success("Đổi username thành công!", "Thành công");
 				router.push("/");

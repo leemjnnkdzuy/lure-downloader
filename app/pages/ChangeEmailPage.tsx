@@ -11,6 +11,7 @@ import {TextInput} from "@/app/components/ui/TextInput";
 import {useTheme} from "@/app/hooks/useTheme";
 import {useAuth} from "@/app/hooks/useAuth";
 import {useGlobalNotificationPopup} from "@/app/hooks/useGlobalNotificationPopup";
+import { userService } from "@/app/services/UserService";
 
 type Phase = "init" | "verify-current" | "input-new" | "verify-new" | "success";
 
@@ -68,14 +69,11 @@ export default function ChangeEmailPage() {
 		}
 	};
 
-	// --- Actions ---
-
 	const sendPinToCurrentEmail = async () => {
 		setIsLoading(true);
 		try {
-			const response = await fetch("/api/user/change-email/send-current", {method: "POST"});
-			const data = await response.json();
-			if (!response.ok) throw new Error(data.message);
+			const {data, ok} = await userService.sendCurrentEmailPin();
+			if (!ok) throw new Error(data.message);
 			
 			setPhase("verify-current");
 			notify.success("Đã gửi mã xác thực đến email hiện tại", "Đã gửi");
@@ -92,15 +90,10 @@ export default function ChangeEmailPage() {
 
 		setIsLoading(true);
 		try {
-			const response = await fetch("/api/user/change-email/verify-current", {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify({code}),
-			});
-			const data = await response.json();
-			if (!response.ok) throw new Error(data.message);
+			const {data, ok} = await userService.verifyCurrentEmailPin(code);
+			if (!ok) throw new Error(data.message);
 
-			setVerificationToken(data.token); // Save token for next steps
+			setVerificationToken(data.token);
 			setPhase("input-new");
 			notify.success("Xác thực thành công", "Thành công");
 		} catch (error: any) {
@@ -123,13 +116,8 @@ export default function ChangeEmailPage() {
 
 		setIsLoading(true);
 		try {
-			const response = await fetch("/api/user/change-email/send-new", {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify({email: newEmail, token: verificationToken}), // verify permission
-			});
-			const data = await response.json();
-			if (!response.ok) throw new Error(data.message);
+			const {data, ok} = await userService.sendNewEmailPin(newEmail, verificationToken);
+			if (!ok) throw new Error(data.message);
 
 			setPhase("verify-new");
 			notify.success(`Đã gửi mã xác thực đến ${newEmail}`, "Đã gửi");
@@ -146,17 +134,12 @@ export default function ChangeEmailPage() {
 
 		setIsLoading(true);
 		try {
-			const response = await fetch("/api/user/change-email/confirm", {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify({
-					email: newEmail,
-					code,
-					token: verificationToken
-				}),
+			const {data, ok} = await userService.confirmChangeEmail({
+				email: newEmail,
+				code,
+				token: verificationToken
 			});
-			const data = await response.json();
-			if (!response.ok) throw new Error(data.message);
+			if (!ok) throw new Error(data.message);
 
 			await refreshUser();
 			setPhase("success");

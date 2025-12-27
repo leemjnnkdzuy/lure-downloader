@@ -9,6 +9,7 @@ import {useRouter} from "next/navigation";
 import {Button} from "@/app/components/ui/Button";
 import {TextInput} from "@/app/components/ui/TextInput";
 import {useTheme} from "@/app/hooks/useTheme";
+import { authService } from "@/app/services/AuthService";
 
 type Phase = "email" | "pin" | "password" | "success";
 
@@ -32,16 +33,7 @@ export default function ForgetPasswordPage() {
 		setIsLoading(true);
 
 		try {
-			const response = await fetch("/api/auth/reset-password", {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify({
-					action: "send-pin",
-					email,
-				}),
-			});
-
-			const data = await response.json();
+			const data = await authService.resetPasswordSendPin(email);
 
 			if (data.success) {
 				setPhase("pin");
@@ -98,17 +90,10 @@ export default function ForgetPasswordPage() {
 		setIsLoading(true);
 
 		try {
-			const response = await fetch("/api/auth/reset-password", {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify({
-					action: "verify-pin",
-					email,
-					pin: pinCode,
-				}),
+			const data = await authService.resetPasswordVerifyPin({
+				email,
+				pin: pinCode,
 			});
-
-			const data = await response.json();
 
 			if (data.success) {
 				setPhase("password");
@@ -139,17 +124,10 @@ export default function ForgetPasswordPage() {
 		setIsLoading(true);
 
 		try {
-			const response = await fetch("/api/auth/reset-password", {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify({
-					action: "reset-password",
-					email,
-					newPassword,
-				}),
+			const data = await authService.resetPasswordConfirm({
+				email,
+				newPassword,
 			});
-
-			const data = await response.json();
 
 			if (data.success) {
 				setPhase("success");
@@ -169,16 +147,7 @@ export default function ForgetPasswordPage() {
 		setPin(["", "", "", "", "", ""]);
 
 		try {
-			const response = await fetch("/api/auth/reset-password", {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify({
-					action: "send-pin",
-					email,
-				}),
-			});
-
-			const data = await response.json();
+			const data = await authService.resetPasswordSendPin(email);
 
 			if (!data.success) {
 				setError(data.error || "Có lỗi xảy ra. Vui lòng thử lại.");
