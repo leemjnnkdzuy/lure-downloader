@@ -3,10 +3,10 @@
 import {useState} from "react";
 import Image from "next/image";
 import {useRouter} from "next/navigation";
-import {LogIn, Moon, Sun, Facebook, Video, Grid, Download, LogOut, User, ChevronDown} from "lucide-react";
+import {LogIn, Moon, Sun, Grid, Download, LogOut, User, ChevronDown, History, Clipboard} from "lucide-react";
 import {motion, AnimatePresence} from "framer-motion";
 
-import {images} from "@/app/assets";
+import {images, platformLogos} from "@/app/assets";
 
 import {DropDownContent} from "@/app/components/ui/DropDown";
 import {Overlay} from "@/app/components/ui/Overlay";
@@ -15,17 +15,29 @@ import {TextInput} from "@/app/components/ui/TextInput";
 import {useTheme} from "@/app/hooks/useTheme";
 import {useAuth} from "@/app/hooks/useAuth";
 
+import {TikTokService, TikTokVideoData} from "@/app/services/TikTokService";
+import {useGlobalNotification} from "@/app/context/GlobalNotificationContext";
+import {TikTokDownloader} from "@/app/components/common/TikTokDownloader";
+
 export default function HomePage() {
 	const {theme, toggleTheme} = useTheme();
-	const {user, isAuthenticated, logout, loading} = useAuth();
+	const {user, isAuthenticated, logout, loading: authLoading} = useAuth();
+	const {showNotification} = useGlobalNotification();
 	const router = useRouter();
+
 	const [isOverlayOpen, setIsOverlayOpen] = useState(false);
-	const [platform, setPlatform] = useState<"facebook" | "tiktok">("facebook");
+	const [platform, setPlatform] = useState<"tiktok" | "douyin" | "instagram" | "youtube">("tiktok");
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+	const [url, setUrl] = useState("");
+	const [isLoading, setIsLoading] = useState(false);
+	const [videoData, setVideoData] = useState<TikTokVideoData | null>(null);
+
 	const platforms = [
-		{id: "facebook", name: "Facebook", icon: Facebook},
-		{id: "tiktok", name: "TikTok", icon: Video},
+		{id: "tiktok", name: "TikTok", logo: platformLogos.tiktok},
+		{id: "douyin", name: "Douyin", logo: platformLogos.douyin},
+		{id: "instagram", name: "Instagram", logo: platformLogos.instagram},
+		{id: "youtube", name: "YouTube", logo: platformLogos.youtube},
 	] as const;
 
 	const currentPlatform = platforms.find((p) => p.id === platform);
@@ -33,6 +45,32 @@ export default function HomePage() {
 	const handleLogout = async () => {
 		setIsDropdownOpen(false);
 		await logout();
+	};
+
+	const handleGetInfo = async () => {
+		if (!url) return;
+		if (platform !== "tiktok") {
+			return;
+		}
+		setIsLoading(true);
+		setVideoData(null);
+		try {
+			const data = await TikTokService.getVideoInfo(url);
+			setVideoData(data);
+		} catch (err: any) {
+			console.error(err);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const handlePaste = async () => {
+		try {
+			const text = await navigator.clipboard.readText();
+			setUrl(text);
+		} catch (err) {
+			console.error("Failed to read clipboard:", err);
+		}
 	};
 
 	return (
@@ -58,9 +96,18 @@ export default function HomePage() {
 						) : (
 							<Moon className='w-5 h-5 text-black dark:text-white' />
 						)}
-					</Button>
 
-					{loading ? (
+					</Button>
+					{isAuthenticated && (
+						<Button
+							onClick={() => router.push("/history")}
+							className='!p-3 !bg-transparent !border-0 hover:!bg-black/5 dark:hover:!bg-white/10 !shadow-none'
+						>
+							<History className='w-5 h-5 text-black dark:text-white' />
+						</Button>
+					)}
+
+					{authLoading ? (
 						<div className='w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 animate-pulse' />
 					) : isAuthenticated && user ? (
 						<DropDownContent
@@ -155,20 +202,14 @@ export default function HomePage() {
 								>
 									{currentPlatform && (
 										<>
-											<currentPlatform.icon
-												className={`w-8 h-8 ${
-													platform === "facebook"
-														? "text-blue-600"
-														: "text-pink-500"
-												}`}
+											<Image
+												src={currentPlatform.logo}
+												alt={currentPlatform.name}
+												width={32}
+												height={32}
+												className='w-8 h-8 object-contain'
 											/>
-											<span
-												className={`text-3xl font-bold ${
-													platform === "facebook"
-														? "text-blue-600"
-														: "text-pink-500"
-												}`}
-											>
+											<span className='text-3xl font-bold'>
 												{currentPlatform.name}
 											</span>
 										</>
@@ -185,17 +226,54 @@ export default function HomePage() {
 						>
 							<Grid className='w-6 h-6' />
 						</Button>
-						<TextInput
-							placeholder={`Nhập link ${currentPlatform?.name} để tải xuống...`}
-							className='text-lg py-4 pr-14'
-							containerClassName='flex-1'
-							rightElement={
-								<Button className='!p-2 !rounded-lg'>
-									<Download className='w-5 h-5' />
-								</Button>
-							}
-						/>
+						<div className='flex-1 flex items-center gap-2'>
+							<TextInput
+								placeholder={`Nhập link ${currentPlatform?.name} để tải xuống...`}
+								className='text-lg py-4 pr-14'
+								containerClassName='flex-1'
+								value={url}
+								onChange={(e) => setUrl(e.target.value)}
+								disabled={isLoading}
+								rightElement={
+									<Button
+										className='!p-2 !rounded-lg bg-black/5 dark:bg-white/5 text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10'
+										onClick={handlePaste}
+										title='Dán từ clipboard'
+									>
+										<Clipboard className='w-5 h-5' />
+									</Button>
+								}
+							/>
+							<Button
+								className='h-[54px] w-[54px] !p-0 flex items-center justify-center bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10 !text-black dark:!text-white'
+								onClick={handleGetInfo}
+								disabled={isLoading || !url}
+							>
+								{isLoading ? (
+									<div className='w-6 h-6 border-2 border-black/10 dark:border-white/10 border-t-black dark:border-t-white rounded-full animate-spin' />
+								) : (
+									<Download className='w-6 h-6' />
+								)}
+							</Button>
+						</div>
 					</div>
+
+					<AnimatePresence>
+						{videoData && (
+							<motion.div
+								initial={{opacity: 0, y: 20}}
+								animate={{opacity: 1, y: 0}}
+								exit={{opacity: 0, y: -20}}
+								className=''
+							>
+								{videoData.images ? (
+									<TikTokDownloader data={videoData} />
+								) : (
+									<TikTokDownloader data={videoData} />
+								)}
+							</motion.div>
+						)}
+					</AnimatePresence>
 				</div>
 			</main>
 
@@ -216,10 +294,12 @@ export default function HomePage() {
 										: "bg-transparent border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5"
 								}`}
 							>
-								<p.icon
-									className={`w-8 h-8 ${
-										p.id === "facebook" ? "text-blue-600" : "text-pink-500"
-									}`}
+								<Image
+									src={p.logo}
+									alt={p.name}
+									width={40}
+									height={40}
+									className='w-10 h-10 object-contain'
 								/>
 								<span className='font-medium'>{p.name}</span>
 							</button>

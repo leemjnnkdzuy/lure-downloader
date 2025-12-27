@@ -10,22 +10,22 @@ import {Button} from "@/app/components/ui/Button";
 import {TextInput} from "@/app/components/ui/TextInput";
 import {useAuth} from "@/app/hooks/useAuth";
 import {useTheme} from "@/app/hooks/useTheme";
+import {useGlobalNotification} from "@/app/context/GlobalNotificationContext";
 
 export default function SignInPage() {
 	const router = useRouter();
 	const {theme, toggleTheme} = useTheme();
 	const {login} = useAuth();
+	const {showNotification} = useGlobalNotification();
 
 	const [showPassword, setShowPassword] = useState(false);
 	const [identifier, setIdentifier] = useState("");
 	const [password, setPassword] = useState("");
 	const [rememberMe, setRememberMe] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
-	const [error, setError] = useState("");
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		setError("");
 		setIsLoading(true);
 
 		try {
@@ -34,10 +34,10 @@ export default function SignInPage() {
 			if (result.success) {
 				router.push("/");
 			} else {
-				setError(result.message || "Đăng nhập thất bại");
+				showNotification(result.message || "Đăng nhập thất bại", "error");
 			}
 		} catch {
-			setError("Không thể kết nối đến server. Vui lòng thử lại.");
+			showNotification("Không thể kết nối đến server. Vui lòng thử lại.", "error");
 		} finally {
 			setIsLoading(false);
 		}
@@ -74,11 +74,7 @@ export default function SignInPage() {
 							Chào mừng bạn quay trở lại
 						</p>
 
-						{error && (
-							<div className='mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm text-center'>
-								{error}
-							</div>
-						)}
+
 
 						<form onSubmit={handleSubmit} className='space-y-4'>
 							<TextInput

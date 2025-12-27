@@ -70,11 +70,18 @@ export function AuthProvider({children}: {children: ReactNode}) {
 	const [loading, setLoading] = useState(true);
 
 	const fetchUser = useCallback(async () => {
+		const hasAuth = localStorage.getItem("lure_auth_status");
+		if (!hasAuth) {
+			setLoading(false);
+			return;
+		}
+
 		try {
 			const res = await api.get("/auth/me");
 			setUser(res.data.user);
 		} catch {
 			setUser(null);
+			localStorage.removeItem("lure_auth_status");
 		} finally {
 			setLoading(false);
 		}
@@ -89,6 +96,7 @@ export function AuthProvider({children}: {children: ReactNode}) {
 					rememberMe,
 				});
 				setUser(res.data.user);
+				localStorage.setItem("lure_auth_status", "true");
 				return {success: true};
 			} catch (error: unknown) {
 				const axiosError = error as {
@@ -110,6 +118,7 @@ export function AuthProvider({children}: {children: ReactNode}) {
 			await api.post("/auth/logout");
 		} finally {
 			setUser(null);
+			localStorage.removeItem("lure_auth_status");
 		}
 	}, []);
 
