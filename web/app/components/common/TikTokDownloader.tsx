@@ -178,7 +178,6 @@ export const TikTokDownloader: React.FC<TikTokDownloaderProps> = ({data}) => {
 					onClick={() => {
 						if (data.play) {
 							const link = document.createElement("a");
-							// data.play already contains /api/tiktok/download?url=...
 							link.href = `${data.play}&filename=video_${Date.now()}.mp4`;
 							link.click();
 						}

@@ -23,12 +23,9 @@ export async function GET(req: Request) {
 			},
 		});
 
-		// Create a new headers object for the response
 		const headers = new Headers();
 		headers.set("Content-Disposition", `attachment; filename="${filename}"`);
 		
-        // Attempt to guess content type from filename or default to octet-stream/video depending on context
-        // But better yet, use the upstream content-type if available, or just map common extensions.
         if (filename.endsWith('.mp4')) {
             headers.set("Content-Type", "video/mp4");
         } else if (filename.endsWith('.jpeg') || filename.endsWith('.jpg')) {
@@ -39,16 +36,6 @@ export async function GET(req: Request) {
              headers.set("Content-Type", "application/octet-stream");
         }
 
-		// Return the stream
-		// Next.js App Router route handlers can return a Response object with a ReadableStream
-		// Axios 'stream' response.data is a NodeJS Readable stream.
-		// We can pass it directly to the Response constructor if we cast it properly or use iterator
-		// But for better compatibility in Next.js edge/node envs, explicit streaming is better.
-		// Since we are likely in Node environment (default), we can use the iterator approach or simple pass it if compatible.
-		// NOTE: response.data from axios with responseType: 'stream' is a node stream.
-		// We can wrap it in a Web ReadableStream.
-
-		// Simplified approach: iterate the node stream and yield chunks
 		const stream = new ReadableStream({
 			async start(controller) {
 				for await (const chunk of response.data) {
