@@ -3,7 +3,19 @@
 import {useState} from "react";
 import Image from "next/image";
 import {useRouter} from "next/navigation";
-import {LogIn, Moon, Sun, Download, LogOut, User, ChevronDown, History, Clipboard, Video, Users} from "lucide-react";
+import {
+	LogIn,
+	Moon,
+	Sun,
+	Download,
+	LogOut,
+	User,
+	ChevronDown,
+	History,
+	Clipboard,
+	Video,
+	Users,
+} from "lucide-react";
 import {motion, AnimatePresence} from "framer-motion";
 
 import {images, platformLogos} from "@/app/assets";
@@ -14,10 +26,18 @@ import {TextInput} from "@/app/components/ui/TextInput";
 import {useTheme} from "@/app/hooks/useTheme";
 import {useAuth} from "@/app/hooks/useAuth";
 
-import {TikTokService, TikTokVideoData, UserVideosData} from "@/app/services/TikTokService";
+import {
+	TikTokService,
+	TikTokVideoData,
+	UserVideosData,
+} from "@/app/services/TikTokService";
+import {DouyinService, DouyinVideoData} from "@/app/services/DouyinService";
+import {YouTubeService, YouTubeVideoData} from "@/app/services/YouTubeService";
 import {useGlobalNotification} from "@/app/context/GlobalNotificationContext";
 import {TikTokDownloader} from "@/app/components/common/TikTokDownloader";
 import {TikTokBulkDownloader} from "@/app/components/common/TikTokBulkDownloader";
+import {DouyinDownloader} from "@/app/components/common/DouyinDownloader";
+import {YouTubeDownloader} from "@/app/components/common/YouTubeDownloader";
 import {AnimatedCounter} from "@/app/components/ui/AnimatedCounter";
 
 export default function HomePage() {
@@ -27,21 +47,43 @@ export default function HomePage() {
 	const router = useRouter();
 
 	const [isPlatformDropdownOpen, setIsPlatformDropdownOpen] = useState(false);
-	const [platform, setPlatform] = useState<"tiktok" | "douyin" | "instagram" | "youtube">("tiktok");
+	const [platform, setPlatform] = useState<
+		"tiktok" | "douyin" | "instagram" | "youtube"
+	>("tiktok");
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
 	const [url, setUrl] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
-	const [loadingState, setLoadingState] = useState<{message: string; count?: number} | null>(null);
+	const [loadingState, setLoadingState] = useState<{
+		message: string;
+		count?: number;
+	} | null>(null);
 	const [videoData, setVideoData] = useState<TikTokVideoData | null>(null);
-	const [userVideosData, setUserVideosData] = useState<UserVideosData | null>(null);
+	const [userVideosData, setUserVideosData] = useState<UserVideosData | null>(
+		null,
+	);
+	const [douyinData, setDouyinData] = useState<DouyinVideoData | null>(null);
+	const [youtubeData, setYoutubeData] = useState<YouTubeVideoData | null>(
+		null,
+	);
 
 	const [tiktokMode, setTiktokMode] = useState<"single" | "bulk">("single");
 	const [isModeDropdownOpen, setIsModeDropdownOpen] = useState(false);
 
 	const tiktokModes = [
-		{id: "single", name: "Tải video đơn", icon: Video, description: "Tải một video từ link"},
-		{id: "bulk", name: "Tải tất cả video", icon: Users, description: "Tải toàn bộ video của user"},
+		{
+			id: "single",
+			name: "Tải video đơn",
+			icon: Video,
+			description: "Tải một video từ link",
+		},
+		{
+			id: "bulk",
+			name: "Tải tất cả video",
+			icon: Users,
+			description: "Tải toàn bộ video của user",
+		},
 	] as const;
 
 	const platforms = [
@@ -60,57 +102,97 @@ export default function HomePage() {
 
 	const handleGetInfo = async () => {
 		if (!url) return;
-		if (platform !== "tiktok") {
-			return;
-		}
 
-		let currentMode = tiktokMode;
-		// Fix: Exclude /photo/ links from bulk mode detection
-		if (url.includes("/@") && !url.includes("/video/") && !url.includes("/photo/")) {
-			currentMode = "bulk";
-			setTiktokMode("bulk");
-		} else {
-			currentMode = "single";
-			setTiktokMode("single");
+		let detectedPlatform = platform;
+
+		// Auto-detect platform if not manually set or purely for validation
+		if (url.includes("douyin.com") || url.includes("iesdouyin.com")) {
+			detectedPlatform = "douyin";
+			if (platform !== "douyin") setPlatform("douyin");
+		} else if (url.includes("tiktok.com")) {
+			detectedPlatform = "tiktok";
+			if (platform !== "tiktok") setPlatform("tiktok");
+		} else if (url.includes("youtube.com") || url.includes("youtu.be")) {
+			detectedPlatform = "youtube";
+			if (platform !== "youtube") setPlatform("youtube");
 		}
 
 		setIsLoading(true);
 		setVideoData(null);
 		setUserVideosData(null);
-		setLoadingState({message: "Đang khởi tạo..."});
+		setDouyinData(null);
+		setYoutubeData(null);
+		setLoadingState({message: "Đang xử lý..."});
 
 		try {
-			if (currentMode === "bulk") {
-				// Use SSE for bulk download
-				const sse = TikTokService.getUserVideosSSE(
-					url,
-					(data) => {
-						setLoadingState((prev) => ({
-							message: `Đang tìm thấy ${data.count} video...`,
-							count: data.count,
-						}));
-					},
-					(data) => {
-						setLoadingState((prev) => ({
-							...prev,
-							message: data.message,
-						}));
-					},
-					(data) => {
-						setUserVideosData(data);
-						setIsLoading(false);
-						setLoadingState(null);
-					},
-					(error) => {
-						console.error(error);
-						showNotification(error || "Có lỗi xảy ra", "error");
-						setIsLoading(false);
-						setLoadingState(null);
-					}
-				);
+			if (detectedPlatform === "tiktok") {
+				let currentMode = tiktokMode;
+				// Fix: Exclude /photo/ links from bulk mode detection
+				if (
+					url.includes("/@") &&
+					!url.includes("/video/") &&
+					!url.includes("/photo/")
+				) {
+					currentMode = "bulk";
+					setTiktokMode("bulk");
+				} else {
+					currentMode = "single";
+					setTiktokMode("single");
+				}
+
+				if (currentMode === "bulk") {
+					// Use SSE for bulk download
+					const sse = TikTokService.getUserVideosSSE(
+						url,
+						(data) => {
+							setLoadingState((prev) => ({
+								message: `Đang tìm thấy ${data.count} video...`,
+								count: data.count,
+							}));
+						},
+						(data) => {
+							setLoadingState((prev) => ({
+								...prev,
+								message: data.message,
+							}));
+						},
+						(data) => {
+							setUserVideosData(data);
+							setIsLoading(false);
+							setLoadingState(null);
+						},
+						(error) => {
+							console.error(error);
+							showNotification(error || "Có lỗi xảy ra", "error");
+							setIsLoading(false);
+							setLoadingState(null);
+						},
+					);
+				} else {
+					const data = await TikTokService.getVideoInfo(url);
+					setVideoData(data);
+					setIsLoading(false);
+					setLoadingState(null);
+				}
+			} else if (detectedPlatform === "douyin") {
+				const data = await DouyinService.getVideoInfo(url);
+				setDouyinData(data);
+				setIsLoading(false);
+				setLoadingState(null);
+			} else if (detectedPlatform === "youtube") {
+				const response = await YouTubeService.getVideoInfo(url);
+				if (response.status === "success" && response.data) {
+					setYoutubeData(response.data);
+				} else {
+					showNotification(
+						response.message || "Không thể lấy thông tin video",
+						"error",
+					);
+				}
+				setIsLoading(false);
+				setLoadingState(null);
 			} else {
-				const data = await TikTokService.getVideoInfo(url);
-				setVideoData(data);
+				showNotification("Nền tảng này chưa được hỗ trợ", "error");
 				setIsLoading(false);
 				setLoadingState(null);
 			}
@@ -126,14 +208,25 @@ export default function HomePage() {
 		try {
 			const text = await navigator.clipboard.readText();
 			setUrl(text);
-			
-			if (platform === "tiktok") {
-                // Fix: Exclude /photo/ links from bulk mode detection
-				if (text.includes("/@") && !text.includes("/video/") && !text.includes("/photo/")) {
+
+			if (text.includes("douyin.com") || text.includes("iesdouyin.com")) {
+				setPlatform("douyin");
+			} else if (text.includes("tiktok.com")) {
+				setPlatform("tiktok");
+				if (
+					text.includes("/@") &&
+					!text.includes("/video/") &&
+					!text.includes("/photo/")
+				) {
 					setTiktokMode("bulk");
 				} else {
 					setTiktokMode("single");
 				}
+			} else if (
+				text.includes("youtube.com") ||
+				text.includes("youtu.be")
+			) {
+				setPlatform("youtube");
 			}
 		} catch (err) {
 			console.error("Failed to read clipboard:", err);
@@ -151,7 +244,9 @@ export default function HomePage() {
 						height={40}
 						className='w-8 h-8 sm:w-10 sm:h-10 object-contain dark:invert-0 invert'
 					/>
-					<span className='text-lg sm:text-xl font-bold hidden sm:inline'>Lure Downloader</span>
+					<span className='text-lg sm:text-xl font-bold hidden sm:inline'>
+						Lure Downloader
+					</span>
 				</div>
 				<div className='flex items-center gap-2'>
 					{platform === "tiktok" && (
@@ -159,30 +254,39 @@ export default function HomePage() {
 							trigger={
 								<button className='flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors'>
 									<AnimatePresence mode='wait'>
-										{tiktokMode === "single" ? (
+										{tiktokMode === "single" ?
 											<motion.div
 												key='single-icon'
-												initial={{opacity: 0, scale: 0.5}}
+												initial={{
+													opacity: 0,
+													scale: 0.5,
+												}}
 												animate={{opacity: 1, scale: 1}}
 												exit={{opacity: 0, scale: 0.5}}
 												transition={{duration: 0.2}}
 											>
 												<Video className='w-5 h-5' />
 											</motion.div>
-										) : (
-											<motion.div
+										:	<motion.div
 												key='bulk-icon'
-												initial={{opacity: 0, scale: 0.5}}
+												initial={{
+													opacity: 0,
+													scale: 0.5,
+												}}
 												animate={{opacity: 1, scale: 1}}
 												exit={{opacity: 0, scale: 0.5}}
 												transition={{duration: 0.2}}
 											>
 												<Users className='w-5 h-5' />
 											</motion.div>
-										)}
+										}
 									</AnimatePresence>
 									<span className='font-medium hidden sm:inline'>
-										{tiktokModes.find((m) => m.id === tiktokMode)?.name}
+										{
+											tiktokModes.find(
+												(m) => m.id === tiktokMode,
+											)?.name
+										}
 									</span>
 									<ChevronDown
 										className={`w-4 h-4 transition-transform ${isModeDropdownOpen ? "rotate-180" : ""}`}
@@ -205,14 +309,16 @@ export default function HomePage() {
 											setUrl("");
 										}}
 										className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
-											tiktokMode === mode.id
-												? "bg-black/10 dark:bg-white/10"
-												: "hover:bg-black/5 dark:hover:bg-white/5"
+											tiktokMode === mode.id ?
+												"bg-black/10 dark:bg-white/10"
+											:	"hover:bg-black/5 dark:hover:bg-white/5"
 										}`}
 									>
 										<mode.icon className='w-5 h-5 mt-0.5 shrink-0' />
 										<div>
-											<span className='font-medium block'>{mode.name}</span>
+											<span className='font-medium block'>
+												{mode.name}
+											</span>
 											<span className='text-xs text-black/50 dark:text-white/50'>
 												{mode.description}
 											</span>
@@ -234,7 +340,9 @@ export default function HomePage() {
 										className='w-6 h-6 object-contain'
 									/>
 								)}
-								<span className='font-medium hidden sm:inline'>{currentPlatform?.name}</span>
+								<span className='font-medium hidden sm:inline'>
+									{currentPlatform?.name}
+								</span>
 								<ChevronDown
 									className={`w-4 h-4 transition-transform ${isPlatformDropdownOpen ? "rotate-180" : ""}`}
 								/>
@@ -254,9 +362,9 @@ export default function HomePage() {
 										setIsPlatformDropdownOpen(false);
 									}}
 									className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
-										platform === p.id
-											? "bg-black/10 dark:bg-white/10"
-											: "hover:bg-black/5 dark:hover:bg-white/5"
+										platform === p.id ?
+											"bg-black/10 dark:bg-white/10"
+										:	"hover:bg-black/5 dark:hover:bg-white/5"
 									}`}
 								>
 									<Image
@@ -266,47 +374,49 @@ export default function HomePage() {
 										height={24}
 										className='w-6 h-6 object-contain'
 									/>
-									<span className='font-medium'>{p.name}</span>
+									<span className='font-medium'>
+										{p.name}
+									</span>
 								</button>
 							))}
 						</div>
 					</DropDownContent>
-					<Button
+					<button
 						onClick={toggleTheme}
-						className='!p-3 !bg-transparent !border-0 hover:!bg-black/5 dark:hover:!bg-white/10 !shadow-none'
+						className='p-3 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors hidden md:flex items-center justify-center'
 					>
-						{theme === "dark" ? (
+						{theme === "dark" ?
 							<Sun className='w-5 h-5 text-black dark:text-white' />
-						) : (
-							<Moon className='w-5 h-5 text-black dark:text-white' />
-						)}
-					</Button>
+						:	<Moon className='w-5 h-5 text-black dark:text-white' />
+						}
+					</button>
 					{isAuthenticated && (
-						<Button
+						<button
 							onClick={() => router.push("/history")}
-							className='!p-3 !bg-transparent !border-0 hover:!bg-black/5 dark:hover:!bg-white/10 !shadow-none'
+							className='p-3 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors hidden md:flex items-center justify-center'
 						>
 							<History className='w-5 h-5 text-black dark:text-white' />
-						</Button>
+						</button>
 					)}
 
-					{authLoading ? (
+					{authLoading ?
 						<div className='w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 animate-pulse' />
-					) : isAuthenticated && user ? (
+					: isAuthenticated && user ?
 						<DropDownContent
 							trigger={
 								<button className='flex items-center gap-2 p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors'>
-									{user.avatar ? (
+									{user.avatar ?
 										<img
 											src={user.avatar}
 											alt={user.username}
 											className='w-10 h-10 rounded-full object-cover border-2 border-black/10 dark:border-white/10'
 										/>
-									) : (
-										<div className='w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm'>
-											{user.username?.charAt(0).toUpperCase() || "U"}
+									:	<div className='w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm'>
+											{user.username
+												?.charAt(0)
+												.toUpperCase() || "U"}
 										</div>
-									)}
+									}
 									<ChevronDown
 										className={`w-4 h-4 text-black/60 dark:text-white/60 transition-transform ${
 											isDropdownOpen ? "rotate-180" : ""
@@ -321,19 +431,22 @@ export default function HomePage() {
 						>
 							<div className='p-4 border-b border-black/10 dark:border-white/10'>
 								<div className='flex items-center gap-3'>
-									{user.avatar ? (
+									{user.avatar ?
 										<img
 											src={user.avatar}
 											alt={user.username}
 											className='w-12 h-12 rounded-full object-cover'
 										/>
-									) : (
-										<div className='w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold'>
-											{user.username?.charAt(0).toUpperCase() || "U"}
+									:	<div className='w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold'>
+											{user.username
+												?.charAt(0)
+												.toUpperCase() || "U"}
 										</div>
-									)}
+									}
 									<div className='flex-1 min-w-0'>
-										<p className='font-semibold truncate'>{user.username}</p>
+										<p className='font-semibold truncate'>
+											{user.username}
+										</p>
 										<p className='text-sm text-black/50 dark:text-white/50 truncate'>
 											{user.email}
 										</p>
@@ -342,6 +455,35 @@ export default function HomePage() {
 							</div>
 
 							<div className='p-2'>
+								{/* Mobile only: Theme toggle */}
+								<button
+									onClick={() => {
+										toggleTheme();
+										setIsDropdownOpen(false);
+									}}
+									className='w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left md:hidden'
+								>
+									{theme === "dark" ?
+										<Sun className='w-5 h-5 text-black/60 dark:text-white/60' />
+									:	<Moon className='w-5 h-5 text-black/60 dark:text-white/60' />
+									}
+									<span>
+										{theme === "dark" ?
+											"Chế độ sáng"
+										:	"Chế độ tối"}
+									</span>
+								</button>
+								{/* Mobile only: History */}
+								<button
+									onClick={() => {
+										setIsDropdownOpen(false);
+										router.push("/history");
+									}}
+									className='w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left md:hidden'
+								>
+									<History className='w-5 h-5 text-black/60 dark:text-white/60' />
+									<span>Lịch sử tải</span>
+								</button>
 								<button
 									onClick={() => {
 										setIsDropdownOpen(false);
@@ -361,12 +503,71 @@ export default function HomePage() {
 								</button>
 							</div>
 						</DropDownContent>
-					) : (
-						<Button className='px-4 py-2 text-sm' onClick={() => router.push("/sign-in")}>
-							<LogIn className='w-4 h-4 mr-2' />
-							Đăng nhập
-						</Button>
-					)}
+					:	<>
+							{/* Mobile menu for unauthenticated users */}
+							<DropDownContent
+								trigger={
+									<button className='p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors md:hidden'>
+										<svg
+											xmlns='http://www.w3.org/2000/svg'
+											width='24'
+											height='24'
+											viewBox='0 0 24 24'
+											fill='none'
+											stroke='currentColor'
+											strokeWidth='2'
+											strokeLinecap='round'
+											strokeLinejoin='round'
+										>
+											<circle
+												cx='12'
+												cy='12'
+												r='1'
+											></circle>
+											<circle
+												cx='12'
+												cy='5'
+												r='1'
+											></circle>
+											<circle
+												cx='12'
+												cy='19'
+												r='1'
+											></circle>
+										</svg>
+									</button>
+								}
+								align='right'
+								className='w-48 bg-white dark:bg-[#1a1a1a] border-black/10 dark:border-white/10'
+								isOpen={isMobileMenuOpen}
+								onOpenChange={setIsMobileMenuOpen}
+							>
+								<div className='p-2'>
+									<button
+										onClick={toggleTheme}
+										className='w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left'
+									>
+										{theme === "dark" ?
+											<Sun className='w-5 h-5 text-black/60 dark:text-white/60' />
+										:	<Moon className='w-5 h-5 text-black/60 dark:text-white/60' />
+										}
+										<span>
+											{theme === "dark" ?
+												"Chế độ sáng"
+											:	"Chế độ tối"}
+										</span>
+									</button>
+								</div>
+							</DropDownContent>
+							<Button
+								className='px-4 py-2 text-sm'
+								onClick={() => router.push("/sign-in")}
+							>
+								<LogIn className='w-4 h-4 mr-2' />
+								Đăng nhập
+							</Button>
+						</>
+					}
 				</div>
 			</header>
 
@@ -380,7 +581,10 @@ export default function HomePage() {
 									initial={{opacity: 0, y: 20}}
 									animate={{opacity: 1, y: 0}}
 									exit={{opacity: 0, y: -20}}
-									transition={{duration: 0.3, ease: "easeInOut"}}
+									transition={{
+										duration: 0.3,
+										ease: "easeInOut",
+									}}
 									className='flex items-center justify-center gap-3'
 								>
 									{currentPlatform && (
@@ -404,11 +608,11 @@ export default function HomePage() {
 
 					<div className='flex items-center gap-2'>
 						<TextInput
-						placeholder={
-							platform === "tiktok" && tiktokMode === "bulk"
-								? "Nhập link profile TikTok (VD: https://tiktok.com/@username)..."
-								: `Nhập link ${currentPlatform?.name} để tải xuống...`
-						}
+							placeholder={
+								platform === "tiktok" && tiktokMode === "bulk" ?
+									"Nhập link profile TikTok (VD: https://tiktok.com/@username)..."
+								:	`Nhập link ${currentPlatform?.name} để tải xuống...`
+							}
 							className='text-lg py-4 pr-14'
 							containerClassName='flex-1'
 							value={url}
@@ -430,11 +634,9 @@ export default function HomePage() {
 							onClick={handleGetInfo}
 							disabled={isLoading || !url}
 						>
-							{isLoading ? (
+							{isLoading ?
 								<div className='w-6 h-6 border-2 border-black/10 dark:border-white/10 border-t-black dark:border-t-white rounded-full animate-spin' />
-							) : (
-								<Download className='w-6 h-6' />
-							)}
+							:	<Download className='w-6 h-6' />}
 						</Button>
 					</div>
 
@@ -444,42 +646,71 @@ export default function HomePage() {
 							animate={{opacity: 1, y: 0}}
 							className='flex items-center justify-center gap-2 text-sm font-medium text-black/60 dark:text-white/60'
 						>
-							{loadingState.count !== undefined ? (
+							{loadingState.count !== undefined ?
 								<>
 									<span>Đã tìm thấy:</span>
-									<AnimatedCounter 
-										value={loadingState.count} 
-										className="text-xl font-bold text-blue-600 dark:text-blue-400 min-w-[30px] text-center" 
+									<AnimatedCounter
+										value={loadingState.count}
+										className='text-xl font-bold text-blue-600 dark:text-blue-400 min-w-[30px] text-center'
 									/>
 									<span>video</span>
 								</>
-							) : (
-								<span className="animate-pulse">{loadingState.message}</span>
-							)}
+							:	<span className='animate-pulse'>
+									{loadingState.message}
+								</span>
+							}
 						</motion.div>
 					)}
 
 					<AnimatePresence mode='wait'>
-						{videoData && tiktokMode === "single" && (
+						{videoData &&
+							platform === "tiktok" &&
+							tiktokMode === "single" && (
+								<motion.div
+									key='single-result'
+									initial={{opacity: 0, y: 20}}
+									animate={{opacity: 1, y: 0}}
+									exit={{opacity: 0, y: -20}}
+									transition={{duration: 0.3}}
+								>
+									<TikTokDownloader data={videoData} />
+								</motion.div>
+							)}
+						{userVideosData &&
+							platform === "tiktok" &&
+							tiktokMode === "bulk" && (
+								<motion.div
+									key='bulk-result'
+									initial={{opacity: 0, y: 20}}
+									animate={{opacity: 1, y: 0}}
+									exit={{opacity: 0, y: -20}}
+									transition={{duration: 0.3}}
+								>
+									<TikTokBulkDownloader
+										data={userVideosData}
+									/>
+								</motion.div>
+							)}
+						{douyinData && platform === "douyin" && (
 							<motion.div
-								key='single-result'
+								key='douyin-result'
 								initial={{opacity: 0, y: 20}}
 								animate={{opacity: 1, y: 0}}
 								exit={{opacity: 0, y: -20}}
 								transition={{duration: 0.3}}
 							>
-								<TikTokDownloader data={videoData} />
+								<DouyinDownloader data={douyinData} />
 							</motion.div>
 						)}
-						{userVideosData && tiktokMode === "bulk" && (
+						{youtubeData && platform === "youtube" && (
 							<motion.div
-								key='bulk-result'
+								key='youtube-result'
 								initial={{opacity: 0, y: 20}}
 								animate={{opacity: 1, y: 0}}
 								exit={{opacity: 0, y: -20}}
 								transition={{duration: 0.3}}
 							>
-								<TikTokBulkDownloader data={userVideosData} />
+								<YouTubeDownloader data={youtubeData} />
 							</motion.div>
 						)}
 					</AnimatePresence>
