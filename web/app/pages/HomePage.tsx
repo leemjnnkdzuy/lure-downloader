@@ -250,94 +250,108 @@ export default function HomePage() {
 				</div>
 				<div className='flex items-center gap-2'>
 					{platform === "tiktok" && (
-						<DropDownContent
-							trigger={
-								<button className='flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors'>
-									<AnimatePresence mode='wait'>
-										{tiktokMode === "single" ?
-											<motion.div
-												key='single-icon'
-												initial={{
-													opacity: 0,
-													scale: 0.5,
-												}}
-												animate={{opacity: 1, scale: 1}}
-												exit={{opacity: 0, scale: 0.5}}
-												transition={{duration: 0.2}}
-											>
-												<Video className='w-5 h-5' />
-											</motion.div>
-										:	<motion.div
-												key='bulk-icon'
-												initial={{
-													opacity: 0,
-													scale: 0.5,
-												}}
-												animate={{opacity: 1, scale: 1}}
-												exit={{opacity: 0, scale: 0.5}}
-												transition={{duration: 0.2}}
-											>
-												<Users className='w-5 h-5' />
-											</motion.div>
-										}
-									</AnimatePresence>
-									<span className='font-medium hidden sm:inline'>
-										{
-											tiktokModes.find(
-												(m) => m.id === tiktokMode,
-											)?.name
-										}
-									</span>
-									<ChevronDown
-										className={`w-4 h-4 transition-transform ${isModeDropdownOpen ? "rotate-180" : ""}`}
-									/>
-								</button>
-							}
-							isOpen={isModeDropdownOpen}
-							onOpenChange={setIsModeDropdownOpen}
-							align='right'
-							className='w-56 bg-white dark:bg-[#1a1a1a] border-black/10 dark:border-white/10'
-						>
-							<div className='p-2'>
-								{tiktokModes.map((mode) => (
-									<button
-										key={mode.id}
-										onClick={() => {
-											setTiktokMode(mode.id);
-											setIsModeDropdownOpen(false);
-											setVideoData(null);
-											setUrl("");
-										}}
-										className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
-											tiktokMode === mode.id ?
-												"bg-black/10 dark:bg-white/10"
-											:	"hover:bg-black/5 dark:hover:bg-white/5"
-										}`}
-									>
-										<mode.icon className='w-5 h-5 mt-0.5 shrink-0' />
-										<div>
-											<span className='font-medium block'>
-												{mode.name}
-											</span>
-											<span className='text-xs text-black/50 dark:text-white/50'>
-												{mode.description}
-											</span>
-										</div>
+						<div className='hidden md:block'>
+							<DropDownContent
+								trigger={
+									<button className='flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors'>
+										<AnimatePresence mode='wait'>
+											{tiktokMode === "single" ?
+												<motion.div
+													key='single-icon'
+													initial={{
+														opacity: 0,
+														scale: 0.5,
+													}}
+													animate={{
+														opacity: 1,
+														scale: 1,
+													}}
+													exit={{
+														opacity: 0,
+														scale: 0.5,
+													}}
+													transition={{duration: 0.2}}
+												>
+													<Video className='w-5 h-5' />
+												</motion.div>
+											:	<motion.div
+													key='bulk-icon'
+													initial={{
+														opacity: 0,
+														scale: 0.5,
+													}}
+													animate={{
+														opacity: 1,
+														scale: 1,
+													}}
+													exit={{
+														opacity: 0,
+														scale: 0.5,
+													}}
+													transition={{duration: 0.2}}
+												>
+													<Users className='w-5 h-5' />
+												</motion.div>
+											}
+										</AnimatePresence>
+										<span className='font-medium hidden sm:inline'>
+											{
+												tiktokModes.find(
+													(m) => m.id === tiktokMode,
+												)?.name
+											}
+										</span>
+										<ChevronDown
+											className={`w-4 h-4 transition-transform ${isModeDropdownOpen ? "rotate-180" : ""}`}
+										/>
 									</button>
-								))}
-							</div>
-						</DropDownContent>
+								}
+								isOpen={isModeDropdownOpen}
+								onOpenChange={setIsModeDropdownOpen}
+								align='right'
+								className='w-56 bg-white dark:bg-[#1a1a1a] border-black/10 dark:border-white/10'
+							>
+								<div className='p-2'>
+									{tiktokModes.map((mode) => (
+										<button
+											key={mode.id}
+											onClick={() => {
+												setTiktokMode(mode.id);
+												setIsModeDropdownOpen(false);
+												setVideoData(null);
+												setUrl("");
+											}}
+											className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
+												tiktokMode === mode.id ?
+													"bg-black/10 dark:bg-white/10"
+												:	"hover:bg-black/5 dark:hover:bg-white/5"
+											}`}
+										>
+											<mode.icon className='w-5 h-5 mt-0.5 shrink-0' />
+											<div>
+												<span className='font-medium block'>
+													{mode.name}
+												</span>
+												<span className='text-xs text-black/50 dark:text-white/50'>
+													{mode.description}
+												</span>
+											</div>
+										</button>
+									))}
+								</div>
+							</DropDownContent>
+						</div>
 					)}
 					<DropDownContent
 						trigger={
-							<button className='flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors'>
+							<button className='flex items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors'>
 								{currentPlatform && (
 									<Image
 										src={currentPlatform.logo}
 										alt={currentPlatform.name}
 										width={24}
 										height={24}
-										className='w-6 h-6 object-contain'
+										className='w-5 h-5 sm:w-6 sm:h-6 object-contain'
 									/>
 								)}
 								<span className='font-medium hidden sm:inline'>
@@ -350,10 +364,10 @@ export default function HomePage() {
 						}
 						isOpen={isPlatformDropdownOpen}
 						onOpenChange={setIsPlatformDropdownOpen}
-						align='right'
-						className='w-48 bg-white dark:bg-[#1a1a1a] border-black/10 dark:border-white/10'
+						align={isAuthenticated ? "right" : "left"}
+						className='w-40 sm:w-48 bg-white dark:bg-[#1a1a1a] border-black/10 dark:border-white/10'
 					>
-						<div className='p-2'>
+						<div className='p-1.5 sm:p-2'>
 							{platforms.map((p) => (
 								<button
 									key={p.id}
@@ -361,7 +375,7 @@ export default function HomePage() {
 										setPlatform(p.id);
 										setIsPlatformDropdownOpen(false);
 									}}
-									className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
+									className={`w-full flex items-center gap-2 sm:gap-3 px-2 py-2 sm:px-3 sm:py-2.5 rounded-lg transition-colors text-left ${
 										platform === p.id ?
 											"bg-black/10 dark:bg-white/10"
 										:	"hover:bg-black/5 dark:hover:bg-white/5"
@@ -370,11 +384,11 @@ export default function HomePage() {
 									<Image
 										src={p.logo}
 										alt={p.name}
-										width={24}
-										height={24}
-										className='w-6 h-6 object-contain'
+										width={20}
+										height={20}
+										className='w-5 h-5 object-contain'
 									/>
-									<span className='font-medium'>
+									<span className='font-medium text-sm sm:text-base'>
 										{p.name}
 									</span>
 								</button>
@@ -504,61 +518,16 @@ export default function HomePage() {
 							</div>
 						</DropDownContent>
 					:	<>
-							{/* Mobile menu for unauthenticated users */}
-							<DropDownContent
-								trigger={
-									<button className='p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors md:hidden'>
-										<svg
-											xmlns='http://www.w3.org/2000/svg'
-											width='24'
-											height='24'
-											viewBox='0 0 24 24'
-											fill='none'
-											stroke='currentColor'
-											strokeWidth='2'
-											strokeLinecap='round'
-											strokeLinejoin='round'
-										>
-											<circle
-												cx='12'
-												cy='12'
-												r='1'
-											></circle>
-											<circle
-												cx='12'
-												cy='5'
-												r='1'
-											></circle>
-											<circle
-												cx='12'
-												cy='19'
-												r='1'
-											></circle>
-										</svg>
-									</button>
-								}
-								align='right'
-								className='w-48 bg-white dark:bg-[#1a1a1a] border-black/10 dark:border-white/10'
-								isOpen={isMobileMenuOpen}
-								onOpenChange={setIsMobileMenuOpen}
+							{/* Mobile theme button for unauthenticated users */}
+							<button
+								onClick={toggleTheme}
+								className='p-3 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors md:hidden flex items-center justify-center'
 							>
-								<div className='p-2'>
-									<button
-										onClick={toggleTheme}
-										className='w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left'
-									>
-										{theme === "dark" ?
-											<Sun className='w-5 h-5 text-black/60 dark:text-white/60' />
-										:	<Moon className='w-5 h-5 text-black/60 dark:text-white/60' />
-										}
-										<span>
-											{theme === "dark" ?
-												"Chế độ sáng"
-											:	"Chế độ tối"}
-										</span>
-									</button>
-								</div>
-							</DropDownContent>
+								{theme === "dark" ?
+									<Sun className='w-5 h-5 text-black dark:text-white' />
+								:	<Moon className='w-5 h-5 text-black dark:text-white' />
+								}
+							</button>
 							<Button
 								className='px-4 py-2 text-sm'
 								onClick={() => router.push("/sign-in")}
